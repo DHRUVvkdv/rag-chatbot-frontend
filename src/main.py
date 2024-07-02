@@ -41,7 +41,7 @@ if prompt := st.chat_input("Ask a question about LEWAS Lab"):
         try:
             base_url = os.getenv('API_BASE_URL')
             if not base_url:
-                raise ValueError("Database URL is not set")
+                raise ValueError("Base URL is not set")
             response = requests.post(
                 f"{base_url}/query_documents",
                 json={"query_text": prompt},
