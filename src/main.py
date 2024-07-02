@@ -2,6 +2,11 @@ import streamlit as st
 import requests
 import json
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
 
 st.set_page_config(page_title="LEWAS Lab Chatbot", page_icon="💧")
 
@@ -34,8 +39,11 @@ if prompt := st.chat_input("Ask a question about LEWAS Lab"):
     # Show loading spinner while waiting for response
     with st.spinner("Thinking..."):
         try:
+            base_url = os.getenv('API_BASE_URL')
+            if not base_url:
+                raise ValueError("Database URL is not set")
             response = requests.post(
-                "http://0.0.0.0:8000/query_documents",
+                f"{base_url}/query_documents",
                 json={"query_text": prompt},
                 headers={'accept': 'application/json', 'Content-Type': 'application/json'}
             )
