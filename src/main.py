@@ -56,14 +56,17 @@ if prompt := st.chat_input("Ask a question about LEWAS Lab"):
                 query_id = response_json.get('query_id', 'N/A')
                 create_time = datetime.fromtimestamp(response_json.get('create_time', 0)).strftime('%Y-%m-%d %H:%M:%S')
                 sources = response_json.get('sources', [])
-                
+
                 additional_info = f"""
                 **Query ID:** {query_id}
                 **Time:** {create_time}
                 **Sources:**
                 """
-                for source in sources:
-                    additional_info += f"- {source}\n"
+                for i, source in enumerate(sources):
+                    if i == 0:
+                        additional_info += f"- {source}\n"
+                    else:
+                        additional_info += f"* {source}\n"
             else:
                 assistant_response = f"Error: Received status code {response.status_code}"
                 additional_info = ""
