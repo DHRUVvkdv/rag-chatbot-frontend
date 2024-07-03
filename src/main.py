@@ -58,18 +58,19 @@ if prompt := st.chat_input("Ask a question about LEWAS Lab"):
                 sources = response_json.get('sources', [])
 
                 additional_info = f"""
-                **Query ID:** {query_id}
-                **Time:** {create_time}
+                **Query ID:**  
+                {query_id}
+
+                **Time:**  
+                {create_time}
+
                 **Sources:**
                 """
-                for i, source in enumerate(sources):
-                    if i == 0:
-                        additional_info += f"- {source}\n"
-                    else:
-                        additional_info += f"* {source}\n"
             else:
                 assistant_response = f"Error: Received status code {response.status_code}"
                 additional_info = ""
+                sources = []
+                
         except requests.RequestException as e:
             assistant_response = f"Error: Unable to connect to the server. {str(e)}"
             additional_info = ""
@@ -80,6 +81,13 @@ if prompt := st.chat_input("Ask a question about LEWAS Lab"):
         if additional_info:
             with st.expander("View answer details"):
                 st.markdown(additional_info)
+                for i, source in enumerate(sources):
+                    if i == 0:
+                        st.markdown(f"- {source}")
+                    else:
+                        st.markdown(f"* {source}")
+                st.markdown("---")  # Add a horizontal line at the end
+
     
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": assistant_response})
