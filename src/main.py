@@ -2,17 +2,11 @@ import streamlit as st
 import requests
 import json
 from datetime import datetime
-from dotenv import load_dotenv
-import os
 
-# Load environment variables
-load_dotenv()
+# No need to load environment variables or use os.getenv anymore
 
-# Get the API base URL from environment variables
-API_BASE_URL = os.getenv("API_BASE_URL")
-if not API_BASE_URL:
-    st.error("API_BASE_URL is not set in the environment variables.")
-    st.stop()
+# Get the API base URL from secrets
+API_BASE_URL = st.secrets["API_BASE_URL"]
 
 st.set_page_config(page_title="LEWAS Lab Chatbot", page_icon="💧")
 
