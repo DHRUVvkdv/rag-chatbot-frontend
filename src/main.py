@@ -8,14 +8,22 @@ import os
 # Load environment variables
 load_dotenv()
 
+# Get the API base URL from environment variables
+API_BASE_URL = os.getenv("API_BASE_URL")
+if not API_BASE_URL:
+    st.error("API_BASE_URL is not set in the environment variables.")
+    st.stop()
+
 st.set_page_config(page_title="LEWAS Lab Chatbot", page_icon="💧")
 
 st.title("LEWAS Lab Chatbot 💧")
 
-st.markdown("""
+st.markdown(
+    """
 Welcome to the LEWAS Lab Chatbot! Ask questions about our water quality monitoring 
 and research activities, and I'll do my best to answer.
-""")
+"""
+)
 
 # Initialize chat history
 if "messages" not in st.session_state:
@@ -39,41 +47,55 @@ if prompt := st.chat_input("Ask a question about LEWAS Lab"):
     # Show loading spinner while waiting for response
     with st.spinner("Thinking..."):
         try:
-            base_url = os.getenv('API_BASE_URL')
-            if not base_url:
-                raise ValueError("Base URL is not set")
             response = requests.post(
-                f"{base_url}/query_documents",
+                f"{API_BASE_URL}/query_documents",
                 json={"query_text": prompt},
-                headers={'accept': 'application/json', 'Content-Type': 'application/json'}
+                headers={
+                    "accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                timeout=30,  # 30 seconds timeout
             )
-            
+
             if response.status_code == 200:
-                response_json = response.json()
-                assistant_response = response_json.get('answer_text', 'Sorry, I couldn\'t process that request.')
-                
-                # Format additional information
-                query_id = response_json.get('query_id', 'N/A')
-                create_time = datetime.fromtimestamp(response_json.get('create_time', 0)).strftime('%Y-%m-%d %H:%M:%S')
-                sources = response_json.get('sources', [])
+                try:
+                    response_json = response.json()
+                except json.JSONDecodeError:
+                    assistant_response = "Error: Unable to parse the server response."
+                    additional_info = ""
+                    sources = []
+                else:
+                    assistant_response = response_json.get(
+                        "answer_text", "Sorry, I couldn't process that request."
+                    )
 
-                additional_info = f"""
-                **Query ID:**  
-                {query_id}
+                    # Format additional information
+                    query_id = response_json.get("query_id", "N/A")
+                    create_time = datetime.fromtimestamp(
+                        response_json.get("create_time", 0)
+                    ).strftime("%Y-%m-%d %H:%M:%S")
+                    sources = response_json.get("sources", [])
 
-                **Time:**  
-                {create_time}
+                    additional_info = f"""
+                    **Query ID:**  
+                    {query_id}
 
-                **Sources:**
-                """
+                    **Time:**  
+                    {create_time}
+
+                    **Sources:**
+                    """
             else:
-                assistant_response = f"Error: Received status code {response.status_code}"
+                assistant_response = (
+                    f"Error: Received status code {response.status_code}"
+                )
                 additional_info = ""
                 sources = []
-                
+
         except requests.RequestException as e:
             assistant_response = f"Error: Unable to connect to the server. {str(e)}"
             additional_info = ""
+            sources = []
 
     # Display assistant response in chat message container
     with st.chat_message("assistant"):
@@ -88,23 +110,33 @@ if prompt := st.chat_input("Ask a question about LEWAS Lab"):
                         st.markdown(f"* {source}")
                 st.markdown("---")  # Add a horizontal line at the end
 
-    
     # Add assistant response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+    st.session_state.messages.append(
+        {"role": "assistant", "content": assistant_response}
+    )
 
 # Add some information about LEWAS Lab
 st.sidebar.title("About LEWAS Lab")
-st.sidebar.info("""
+st.sidebar.info(
+    """
 The LEWAS (Learning Enhanced Watershed Assessment System) Lab is dedicated to 
 real-time water quality monitoring and research. We use advanced technology to 
 collect, analyze, and share data about water resources.
-""")
+"""
+)
 
 # Add a link to more information
 st.sidebar.markdown("[Learn more about LEWAS Lab](https://lewas.ictas.vt.edu/)")
 
+# Add a clear button for chat history
+if st.sidebar.button("Clear Chat History"):
+    st.session_state.messages = []
+    st.experimental_rerun()
+
 # Footer
-st.markdown("""
+st.markdown(
+    """
 ---
 Created by the LEWAS Lab team | Virginia Tech
-""")
+"""
+)
