@@ -3,10 +3,9 @@ import requests
 import json
 from datetime import datetime
 
-# No need to load environment variables or use os.getenv anymore
-
-# Get the API base URL from secrets
+# Get the API base URL and API key from secrets
 API_BASE_URL = st.secrets["API_BASE_URL"]
+API_KEY = st.secrets["API_KEY"]
 
 st.set_page_config(page_title="LEWAS Lab Chatbot", page_icon="💧")
 
@@ -47,6 +46,7 @@ if prompt := st.chat_input("Ask a question about LEWAS Lab"):
                 headers={
                     "accept": "application/json",
                     "Content-Type": "application/json",
+                    "API-Key": API_KEY,  # Add the API key to the headers
                 },
                 timeout=30,  # 30 seconds timeout
             )
@@ -79,6 +79,10 @@ if prompt := st.chat_input("Ask a question about LEWAS Lab"):
 
                     **Sources:**
                     """
+            elif response.status_code == 403:
+                assistant_response = "Error: Invalid API key or unauthorized access."
+                additional_info = ""
+                sources = []
             else:
                 assistant_response = (
                     f"Error: Received status code {response.status_code}"
