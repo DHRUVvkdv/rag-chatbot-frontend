@@ -2,10 +2,37 @@ import streamlit as st
 import requests
 import json
 from datetime import datetime
+import boto3
+from boto3.dynamodb.conditions import Key
 
 # Get the API base URL and API key from secrets
 API_BASE_URL = st.secrets["API_BASE_URL"]
 API_KEY = st.secrets["API_KEY"]
+AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
+AWS_SECRET_ACCESS_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
+AWS_REGION_NAME = st.secrets["AWS_REGION_NAME"]
+
+dynamodb = boto3.resource(
+    "dynamodb",
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    region_name=AWS_REGION_NAME,
+)
+table = dynamodb.Table("RagCdkInfraStack-QueriesTable7395E8FA-17BGT2YQ1QX1F")
+
+
+def update_feedback_in_dynamodb(query_id, user_liked):
+    try:
+        response = table.update_item(
+            Key={"query_id": query_id},
+            UpdateExpression="set user_liked = :ul",
+            ExpressionAttributeValues={":ul": user_liked},
+            ReturnValues="UPDATED_NEW",
+        )
+        return True
+    except Exception as e:
+        st.error(f"Error updating feedback: {str(e)}")
+        return False
 
 
 def format_sources(sources):
@@ -52,20 +79,60 @@ def main():
         """
         )
 
-        # Initialize chat history and details
+        # Initialize chat history, details, and feedback
         if "messages" not in st.session_state:
             st.session_state.messages = []
         if "details" not in st.session_state:
             st.session_state.details = {}
+        if "feedback" not in st.session_state:
+            st.session_state.feedback = {}
 
         # Display chat messages from history on app rerun
         for i, message in enumerate(st.session_state.messages):
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
                 if message["role"] == "assistant":
-                    details = st.session_state.details.get(i, "No details available.")
+                    details = st.session_state.details.get(i, {}).get(
+                        "additional_info", "No details available."
+                    )
                     with st.expander("View Details", expanded=False):
                         st.markdown(details, unsafe_allow_html=True)
+
+                    # Add feedback buttons
+                    if i not in st.session_state.feedback:
+                        st.write("Did you like this response?")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("👍", key=f"thumbs_up_{i}"):
+                                query_id = st.session_state.details.get(i, {}).get(
+                                    "query_id", "N/A"
+                                )
+                                if update_feedback_in_dynamodb(query_id, True):
+                                    st.session_state.feedback[i] = "positive"
+                                    st.success("Thank you for your positive feedback!")
+                                else:
+                                    st.warning(
+                                        "Unable to save feedback. Please try again."
+                                    )
+                        with col2:
+                            if st.button("👎", key=f"thumbs_down_{i}"):
+                                query_id = st.session_state.details.get(i, {}).get(
+                                    "query_id", "N/A"
+                                )
+                                if update_feedback_in_dynamodb(query_id, False):
+                                    st.session_state.feedback[i] = "negative"
+                                    st.error(
+                                        "We're sorry to hear that. We'll work on improving."
+                                    )
+                                else:
+                                    st.warning(
+                                        "Unable to save feedback. Please try again."
+                                    )
+                    else:
+                        if st.session_state.feedback[i] == "positive":
+                            st.success("You gave positive feedback for this response.")
+                        else:
+                            st.error("You gave negative feedback for this response.")
 
         # React to user input
         if prompt := st.chat_input("Ask a question about LEWAS Lab"):
@@ -98,12 +165,11 @@ def main():
                                 "Error: Unable to parse the server response."
                             )
                             additional_info = "No details available."
+                            query_id = "N/A"
                         else:
                             assistant_response = response_json.get(
                                 "answer_text", "Sorry, I couldn't process that request."
                             )
-
-                            # Format additional information
                             query_id = response_json.get("query_id", "N/A")
                             create_time = datetime.fromtimestamp(
                                 response_json.get("create_time", 0)
@@ -115,23 +181,25 @@ def main():
                             <p><strong>Sources:</strong></p>
                             {format_sources(sources)}
                             """
-
                     elif response.status_code == 403:
                         assistant_response = (
                             "Error: Invalid API key or unauthorized access."
                         )
                         additional_info = "No details available."
+                        query_id = "N/A"
                     else:
                         assistant_response = (
                             f"Error: Received status code {response.status_code}"
                         )
                         additional_info = "No details available."
+                        query_id = "N/A"
 
                 except requests.RequestException as e:
                     assistant_response = (
                         f"Error: Unable to connect to the server. {str(e)}"
                     )
                     additional_info = "No details available."
+                    query_id = "N/A"
 
             # Add assistant response to chat history
             st.session_state.messages.append(
@@ -139,15 +207,10 @@ def main():
             )
 
             # Store details
-            st.session_state.details[len(st.session_state.messages) - 1] = (
-                additional_info
-            )
-
-            # Display assistant response
-            with st.chat_message("assistant"):
-                st.markdown(assistant_response)
-                with st.expander("View Details", expanded=False):
-                    st.markdown(additional_info, unsafe_allow_html=True)
+            st.session_state.details[len(st.session_state.messages) - 1] = {
+                "additional_info": additional_info,
+                "query_id": query_id,
+            }
 
             # Rerun to update the chat history
             st.rerun()
@@ -169,6 +232,7 @@ def main():
     if st.sidebar.button("Clear Chat History"):
         st.session_state.messages = []
         st.session_state.details = {}
+        st.session_state.feedback = {}
         st.rerun()
 
     # Add a logout button
