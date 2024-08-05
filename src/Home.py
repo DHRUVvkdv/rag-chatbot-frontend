@@ -9,6 +9,8 @@ COGNITO_REGION = st.secrets["COGNITO_REGION"]
 COGNITO_USER_POOL_ID = st.secrets["COGNITO_USER_POOL_ID"]
 COGNITO_CLIENT_ID = st.secrets["COGNITO_CLIENT_ID"]
 
+LOGIN_ENABLED = False  # Set this to False to disable login
+
 client = boto3.client("cognito-idp", region_name=COGNITO_REGION)
 
 
@@ -180,23 +182,37 @@ def main():
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
-    if st.session_state.authenticated:
-        st.success("You are logged in!")
-        st.markdown("[Go to Chatbot](/1_Chat)", unsafe_allow_html=True)
-        # Automatically redirect to chatbot page
-        st.switch_page("pages/chat.py")
+    if LOGIN_ENABLED:
+        if st.session_state.authenticated:
+            st.success("You are logged in!")
+            st.markdown("[Go to Chatbot](/1_Chat)", unsafe_allow_html=True)
+            # Automatically redirect to chatbot page
+            st.switch_page("pages/chat.py")
+        else:
+            # Tabs for different actions
+            tab1, tab2, tab3 = st.tabs(["Log In", "Sign Up", "Forgot Password"])
+
+            with tab1:
+                login_form()
+
+            with tab2:
+                signup_form()
+
+            with tab3:
+                forgot_password_form()
+
+        # Add a logout button in the sidebar with a unique key
+        if st.sidebar.button("Logout", key="sidebar_logout"):
+            st.session_state.authenticated = False
+            st.session_state.access_token = None
+            st.session_state.id_token = None
+            st.rerun()
     else:
-        # Tabs for different actions
-        tab1, tab2, tab3 = st.tabs(["Log In", "Sign Up", "Forgot Password"])
-
-        with tab1:
-            login_form()
-
-        with tab2:
-            signup_form()
-
-        with tab3:
-            forgot_password_form()
+        st.info(
+            "Login is currently disabled due to demonstration purposes. You can access the chatbot directly."
+        )
+        if st.button("Go to Chatbot"):
+            st.switch_page("pages/chat.py")
 
     # Add some information about LEWAS Lab
     st.sidebar.title("About LEWAS Lab")
@@ -211,16 +227,18 @@ def main():
     # Add a link to more information
     st.sidebar.markdown("[Learn more about LEWAS Lab](https://lewas.ictas.vt.edu/)")
 
-    # Add a logout button in the sidebar with a unique key
-    if st.sidebar.button("Logout", key="sidebar_logout"):
-        st.session_state.authenticated = False
-        st.session_state.access_token = None
-        st.session_state.id_token = None
-        st.experimental_rerun()
-
     # Footer
     st.markdown("---")
     st.markdown("Created by the LEWAS Lab team | Virginia Tech")
+
+    # Add contact information for issues
+    st.sidebar.title("Contact Us")
+    st.sidebar.info(
+        """
+    Is something wrong? Email [lewas.vt@outlook.com](mailto:lewas.vt@outlook.com) or message on 
+    [LinkedIn](https://www.linkedin.com/in/dhruvvarshneyvk/).
+    """
+    )
 
 
 def login_form():
@@ -281,7 +299,7 @@ def signup_form():
         if st.button("Confirm Sign Up"):
             if confirm_sign_up(st.session_state.signup_email_value, confirmation_code):
                 st.session_state.signup_stage = "login"
-                st.experimental_rerun()
+                st.rerun()
 
     elif st.session_state.signup_stage == "login":
         st.success("Your account has been confirmed. Please log in to continue.")
@@ -301,7 +319,7 @@ def signup_form():
         if st.button("Change Email"):
             st.session_state.signup_stage = "initial"
             st.session_state.signup_email_value = ""
-            st.experimental_rerun()
+            st.rerun()
 
 
 def resend_confirmation_code(username):
@@ -320,7 +338,7 @@ def forgot_password_form():
             if forgot_password(username_or_email):
                 st.session_state.reset_stage = "confirm"
                 st.session_state.reset_username = username_or_email
-                st.experimental_rerun()
+                st.rerun()
 
     elif st.session_state.reset_stage == "confirm":
         st.info(
@@ -351,7 +369,7 @@ def forgot_password_form():
                         )
                         st.session_state.reset_stage = "initial"
                         st.session_state.reset_username = ""
-                        st.experimental_rerun()
+                        st.rerun()
                 else:
                     st.error("Please meet all password requirements before submitting.")
 
@@ -364,7 +382,7 @@ def forgot_password_form():
         if st.button("Change Email"):
             st.session_state.reset_stage = "initial"
             st.session_state.reset_username = ""
-            st.experimental_rerun()
+            st.rerun()
 
 
 if __name__ == "__main__":
