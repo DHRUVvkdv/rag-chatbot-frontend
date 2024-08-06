@@ -12,7 +12,7 @@ AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
 AWS_SECRET_ACCESS_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
 AWS_REGION_NAME = st.secrets["AWS_REGION_NAME"]
 
-LOGIN_ENABLED = False  # Set this to False to disable login
+LOGIN_ENABLED = True  # Set this to False to disable login
 
 
 dynamodb = boto3.resource(

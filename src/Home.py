@@ -9,7 +9,7 @@ COGNITO_REGION = st.secrets["COGNITO_REGION"]
 COGNITO_USER_POOL_ID = st.secrets["COGNITO_USER_POOL_ID"]
 COGNITO_CLIENT_ID = st.secrets["COGNITO_CLIENT_ID"]
 
-LOGIN_ENABLED = False  # Set this to False to disable login
+LOGIN_ENABLED = True  # Set this to False to disable login
 
 client = boto3.client("cognito-idp", region_name=COGNITO_REGION)
 
