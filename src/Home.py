@@ -235,7 +235,7 @@ def main():
     st.sidebar.title("Contact Us")
     st.sidebar.info(
         """
-    Is something wrong? Email [lewas.vt@outlook.com](mailto:lewas.vt@outlook.com) or message on 
+    Is something wrong? Email [dhruvvarshney@vt.edu](mailto:dhruvvarshney@vt.edu) or message on 
     [LinkedIn](https://www.linkedin.com/in/dhruvvarshneyvk/).
     """
     )
