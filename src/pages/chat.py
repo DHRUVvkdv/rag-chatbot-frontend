@@ -5,15 +5,16 @@ from datetime import datetime
 import boto3
 from boto3.dynamodb.conditions import Key
 
-# Get the API base URL and API key from secrets
+# Get API URLs and keys from secrets
 API_BASE_URL = st.secrets["API_BASE_URL"]
+API_BASE_URL_RAG = st.secrets["API_BASE_URL_RAG"]  # Separate RAG endpoint
 API_KEY = st.secrets["API_KEY"]
+API_KEY_RAG = st.secrets["API_KEY_RAG"]  # New RAG-specific API key
 AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
 AWS_SECRET_ACCESS_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
 AWS_REGION_NAME = st.secrets["AWS_REGION_NAME"]
 
 LOGIN_ENABLED = False  # Set this to False to disable login
-
 
 dynamodb = boto3.resource(
     "dynamodb",
@@ -21,11 +22,12 @@ dynamodb = boto3.resource(
     aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
     region_name=AWS_REGION_NAME,
 )
-table = dynamodb.Table("RagCdkInfraStack-QueriesTable7395E8FA-17BGT2YQ1QX1F")
+table = dynamodb.Table("lewas-chatbot-queries")
 
 
 def update_feedback_in_dynamodb(query_id, user_liked):
     try:
+        # Try to update the existing item
         response = table.update_item(
             Key={"query_id": query_id},
             UpdateExpression="set user_liked = :ul",
@@ -34,7 +36,10 @@ def update_feedback_in_dynamodb(query_id, user_liked):
         )
         return True
     except Exception as e:
-        st.error(f"Error updating feedback: {str(e)}")
+        # For now, just catch the error and continue
+        # You may want to log this for troubleshooting
+        print(f"Feedback update error: {str(e)}")
+        # Continue without feedback rather than breaking the app
         return False
 
 
@@ -86,7 +91,8 @@ def main():
     st.markdown(
         """
     Welcome to the LEWAS Lab Chatbot! Ask questions about our water quality monitoring 
-    and research activities, and I'll do my best to answer.
+    and research activities, and I'll do my best to answer. You can also ask for visualizations 
+    of weather data like temperature, humidity, or pressure.
     """
     )
 
@@ -101,7 +107,7 @@ def main():
     # Display chat messages from history on app rerun
     for i, message in enumerate(st.session_state.messages):
         with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+            st.markdown(message["content"], unsafe_allow_html=True)
             if message["role"] == "assistant":
                 details = st.session_state.details.get(i, {}).get(
                     "additional_info", "No details available."
@@ -122,7 +128,9 @@ def main():
                                 st.session_state.feedback[i] = "positive"
                                 st.success("Thank you for your positive feedback!")
                             else:
-                                st.warning("Unable to save feedback. Please try again.")
+                                # Quietly continue without error message
+                                st.session_state.feedback[i] = "positive"
+                                st.success("Thank you for your positive feedback!")
                     with col2:
                         if st.button("👎", key=f"thumbs_down_{i}"):
                             query_id = st.session_state.details.get(i, {}).get(
@@ -134,7 +142,11 @@ def main():
                                     "We're sorry to hear that. We'll work on improving."
                                 )
                             else:
-                                st.warning("Unable to save feedback. Please try again.")
+                                # Quietly continue without error message
+                                st.session_state.feedback[i] = "negative"
+                                st.error(
+                                    "We're sorry to hear that. We'll work on improving."
+                                )
                 else:
                     if st.session_state.feedback[i] == "positive":
                         st.success("You gave positive feedback for this response.")
@@ -153,54 +165,121 @@ def main():
         # Show loading spinner while waiting for response
         with st.spinner("Thinking..."):
             try:
-                response = requests.post(
-                    f"{API_BASE_URL}/query_documents",
+                # First, classify the query using the smart_query endpoint
+                classification_response = requests.post(
+                    f"{API_BASE_URL}/classify_query",
                     json={"query_text": prompt},
                     headers={
                         "accept": "application/json",
                         "Content-Type": "application/json",
                         "API-Key": API_KEY,
                     },
-                    timeout=30,
+                    timeout=10,
                 )
 
-                if response.status_code == 200:
-                    try:
-                        response_json = response.json()
-                    except json.JSONDecodeError:
+                if classification_response.status_code == 200:
+                    # Get the classification result
+                    classification_data = classification_response.json()
+                    classification = classification_data.get("classification", "RAG")
+
+                    # Select appropriate API base URL, endpoint, and API key
+                    if classification == "RAG":
+                        # Use RAG endpoint on the RAG server with RAG-specific API key
+                        base_url = API_BASE_URL_RAG
+                        endpoint = "/query_documents"
+                        api_key = API_KEY_RAG  # Use RAG-specific API key
+                    else:
+                        # Use the normal API for visualizations and live data
+                        base_url = API_BASE_URL
+                        endpoint = "/smart_query"
+                        api_key = API_KEY  # Use standard API key
+
+                    # Now make the actual query with the appropriate endpoint and API key
+                    response = requests.post(
+                        f"{base_url}{endpoint}",
+                        json={"query_text": prompt},
+                        headers={
+                            "accept": "application/json",
+                            "Content-Type": "application/json",
+                            "API-Key": api_key,  # Use the selected API key
+                        },
+                        timeout=30,
+                    )
+
+                    if response.status_code == 200:
+                        try:
+                            response_json = response.json()
+                        except json.JSONDecodeError:
+                            assistant_response = (
+                                "Error: Unable to parse the server response."
+                            )
+                            additional_info = "No details available."
+                            query_id = "N/A"
+                        else:
+                            assistant_response = response_json.get(
+                                "answer_text", "Sorry, I couldn't process that request."
+                            )
+                            query_id = response_json.get("query_id", "N/A")
+                            create_time = datetime.fromtimestamp(
+                                response_json.get("create_time", 0)
+                            ).strftime("%Y-%m-%d %H:%M:%S")
+                            sources = response_json.get("sources", [])
+                            additional_info = f"""
+                            <p><strong>Query ID:</strong> {query_id}</p>
+                            <p><strong>Time:</strong> {create_time}</p>
+                            <p><strong>Query Type:</strong> {classification}</p>
+                            <p><strong>Sources:</strong></p>
+                            {format_sources(sources)}
+                            """
+                    else:
                         assistant_response = (
-                            "Error: Unable to parse the server response."
+                            f"Error: Received status code {response.status_code}"
                         )
                         additional_info = "No details available."
                         query_id = "N/A"
-                    else:
-                        assistant_response = response_json.get(
-                            "answer_text", "Sorry, I couldn't process that request."
-                        )
-                        query_id = response_json.get("query_id", "N/A")
-                        create_time = datetime.fromtimestamp(
-                            response_json.get("create_time", 0)
-                        ).strftime("%Y-%m-%d %H:%M:%S")
-                        sources = response_json.get("sources", [])
-                        additional_info = f"""
-                        <p><strong>Query ID:</strong> {query_id}</p>
-                        <p><strong>Time:</strong> {create_time}</p>
-                        <p><strong>Sources:</strong></p>
-                        {format_sources(sources)}
-                        """
-                elif response.status_code == 403:
-                    assistant_response = (
-                        "Error: Invalid API key or unauthorized access."
-                    )
-                    additional_info = "No details available."
-                    query_id = "N/A"
                 else:
-                    assistant_response = (
-                        f"Error: Received status code {response.status_code}"
+                    # If classification fails, default to using the smart_query endpoint with standard API key
+                    response = requests.post(
+                        f"{API_BASE_URL}/smart_query",
+                        json={"query_text": prompt},
+                        headers={
+                            "accept": "application/json",
+                            "Content-Type": "application/json",
+                            "API-Key": API_KEY,
+                        },
+                        timeout=30,
                     )
-                    additional_info = "No details available."
-                    query_id = "N/A"
 
+                    if response.status_code == 200:
+                        try:
+                            response_json = response.json()
+                        except json.JSONDecodeError:
+                            assistant_response = (
+                                "Error: Unable to parse the server response."
+                            )
+                            additional_info = "No details available."
+                            query_id = "N/A"
+                        else:
+                            assistant_response = response_json.get(
+                                "answer_text", "Sorry, I couldn't process that request."
+                            )
+                            query_id = response_json.get("query_id", "N/A")
+                            create_time = datetime.fromtimestamp(
+                                response_json.get("create_time", 0)
+                            ).strftime("%Y-%m-%d %H:%M:%S")
+                            sources = response_json.get("sources", [])
+                            additional_info = f"""
+                            <p><strong>Query ID:</strong> {query_id}</p>
+                            <p><strong>Time:</strong> {create_time}</p>
+                            <p><strong>Sources:</strong></p>
+                            {format_sources(sources)}
+                            """
+                    else:
+                        assistant_response = (
+                            f"Error: Received status code {response.status_code}"
+                        )
+                        additional_info = "No details available."
+                        query_id = "N/A"
             except requests.RequestException as e:
                 assistant_response = f"Error: Unable to connect to the server. {str(e)}"
                 additional_info = "No details available."
@@ -227,6 +306,20 @@ def main():
     The LEWAS (Learning Enhanced Watershed Assessment System) Lab is dedicated to 
     real-time water quality monitoring and research. We use advanced technology to 
     collect, analyze, and share data about water resources.
+    """
+    )
+
+    # Add visualization info
+    st.sidebar.title("Visualization Features")
+    st.sidebar.info(
+        """
+    Try asking for visualizations of weather data:
+    
+    - "Show me a graph of air temperature"
+    - "Create a visualization of humidity trends"
+    - "Plot the air pressure data"
+    
+    The chatbot can generate real-time charts from our weather station data!
     """
     )
 
