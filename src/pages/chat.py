@@ -324,7 +324,9 @@ def main():
     )
 
     # Add a link to more information
-    st.sidebar.markdown("[Learn more about LEWAS Lab](https://lewas.ictas.vt.edu/)")
+    st.sidebar.markdown(
+        "[Learn more about LEWAS Lab](https://lewasenge.s4.es.cloud.vt.edu/)"
+    )
 
     # Add contact information for issues
     st.sidebar.title("Contact Us")
