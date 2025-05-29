@@ -357,7 +357,7 @@ def main():
     st.markdown(
         """
     ---
-    Created by the LEWAS Lab team | Virginia Tech
+    Created by Dhruv Varshney & LEWAS Lab team | Virginia Tech
     """
     )
 
