@@ -3,15 +3,28 @@
 > **Learning Enhanced Watershed Assessment System (LEWAS) Lab**  
 > Virginia Tech - Conversational Interface for Environmental Research
 
+## 🛠️ Technologies Used
+
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+
+## 🌐 Live Demo
+
+🔗 **Access the Chatbot**: [https://lewaschatbot.streamlit.app/](https://lewaschatbot.streamlit.app/)
+
 ## 🤖 Overview
 
 The LEWAS AI Chatbot Frontend is an intuitive Streamlit web application that provides a conversational interface to access LEWAS Lab's research knowledge and real-time environmental data. This interactive assistant serves as the user-facing component of our AI-powered system, enabling researchers, students, and the public to explore a decade of watershed research and current sensor data through natural language queries.
+
+> **🔗 Related Projects**: This frontend connects to the [LEWAS Chatbot Backend](https://github.com/lewas-lab/chatbot-backend) for AI processing and accesses live data from the [LEWAS Backend](https://github.com/lewas-lab/lewas-backend). Users can also explore data visually using the [LEWAS Frontend Dashboard](https://github.com/lewaslab/lewas-frontend).
 
 ## ✨ Key Features
 
 ### 🧠 **Intelligent Conversation Interface**
 
 - **Natural Language Processing**: Ask questions in plain English
+- **Context-Aware Responses**: Maintains conversation context
+- **Multi-Modal Responses**: Text, data tables, and visualizations
 - **Real-Time Interaction**: Instant responses from backend AI
 
 ### 📚 **Three-Way Knowledge Access**
