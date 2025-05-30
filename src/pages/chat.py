@@ -51,7 +51,6 @@ def format_sources(sources):
     for source in sources:
         # Remove any leading/trailing whitespace and existing bullet points
         source = source.strip().lstrip("*- ")
-
         # Split the source into parts (assuming the last part is the URL)
         parts = source.split(" - ")
         if len(parts) > 1:
@@ -61,7 +60,6 @@ def format_sources(sources):
             formatted_source = f'{text} - <a href="{url}" target="_blank">{url}</a>'
         else:
             formatted_source = source
-
         # Add a standardized bullet point with HTML
         formatted_sources.append(f"<li>{formatted_source}</li>")
 
@@ -87,7 +85,6 @@ def main():
         st.session_state.authenticated = True
 
     st.title("LEWAS Lab Chatbot 💧")
-
     st.markdown(
         """
     Welcome to the LEWAS Lab Chatbot! Ask questions about our water quality monitoring 
@@ -108,6 +105,7 @@ def main():
     for i, message in enumerate(st.session_state.messages):
         with st.chat_message(message["role"]):
             st.markdown(message["content"], unsafe_allow_html=True)
+
             if message["role"] == "assistant":
                 details = st.session_state.details.get(i, {}).get(
                     "additional_info", "No details available."
@@ -157,7 +155,6 @@ def main():
     if prompt := st.chat_input("Ask a question about LEWAS Lab"):
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
-
         # Display user message
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -224,6 +221,7 @@ def main():
                                 response_json.get("create_time", 0)
                             ).strftime("%Y-%m-%d %H:%M:%S")
                             sources = response_json.get("sources", [])
+
                             additional_info = f"""
                             <p><strong>Query ID:</strong> {query_id}</p>
                             <p><strong>Time:</strong> {create_time}</p>
@@ -268,6 +266,7 @@ def main():
                                 response_json.get("create_time", 0)
                             ).strftime("%Y-%m-%d %H:%M:%S")
                             sources = response_json.get("sources", [])
+
                             additional_info = f"""
                             <p><strong>Query ID:</strong> {query_id}</p>
                             <p><strong>Time:</strong> {create_time}</p>
@@ -280,6 +279,7 @@ def main():
                         )
                         additional_info = "No details available."
                         query_id = "N/A"
+
             except requests.RequestException as e:
                 assistant_response = f"Error: Unable to connect to the server. {str(e)}"
                 additional_info = "No details available."
@@ -309,19 +309,72 @@ def main():
     """
     )
 
-    # Add visualization info
-    st.sidebar.title("Visualization Features")
-    st.sidebar.info(
+    # Add chatbot capabilities overview
+    st.sidebar.title("🤖 Chatbot Capabilities")
+    st.sidebar.markdown(
         """
-    Try asking for visualizations of weather data:
+    **🔴 Live Environmental Data**
+    - Current sensor readings (16 parameters)
+    - Recent trends and measurements
     
-    - "Show me a graph of air temperature"
-    - "Create a visualization of humidity trends"
-    - "Plot the air pressure data"
+    **📊 Data Visualizations** 
+    - 24-hour trend graphs for any parameter
+    - Professional charts with proper units
     
-    The chatbot can generate real-time charts from our weather station data!
+    **📚 Knowledge Base**
+    - LEWAS Lab research and operations
+    - Technical questions about monitoring
+    - Educational content about water quality
     """
     )
+
+    # Add visualization info
+    st.sidebar.title("💡 Try These Questions")
+    st.sidebar.markdown(
+        """
+    **For Live Data:**
+    - "What's the current pH?"
+    - "How much oxygen is in the water?"
+    - "Is it raining?"
+    
+    **For Visualizations:**
+    - "Graph dissolved oxygen trends"
+    - "Show me humidity over time"
+    - "Plot water temperature data"
+    
+    **For Information:**
+    - "What research does LEWAS do?"
+    - "How does water monitoring work?"
+    - "Why is turbidity important?"
+    """
+    )
+
+    # Add complete user guide section
+    st.sidebar.title("📖 Complete User Guide")
+    st.sidebar.info(
+        """
+    For detailed information about all 16 monitoring parameters, advanced features, 
+    and comprehensive examples, check out our complete user guide.
+    """
+    )
+    st.sidebar.markdown(
+        "[📋 View Complete User Guide](https://docs.google.com/document/d/1GuQ2WcPjabqR3VkJuyAe7hrCV_3evtd9fc0i9w6zz60/edit?usp=sharing)"
+    )
+
+    # Add monitoring parameters quick reference
+    with st.sidebar.expander("📊 Quick Parameter Reference"):
+        st.markdown(
+            """
+        **Water Quality (7 params):**
+        pH, Dissolved Oxygen, Temperature, Turbidity, Conductance, Salinity, ORP
+        
+        **Water Flow (4 params):**
+        Stage, Flow Rate, Velocity (Smoothed & Raw)
+        
+        **Weather (5 params):**
+        Air Temp, Humidity, Pressure, Rain Intensity, Rain Accumulation
+        """
+        )
 
     # Add a link to more information
     st.sidebar.markdown(
