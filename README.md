@@ -275,7 +275,7 @@ You: "Show me a graph of pH trends"
    ```bash
    # Copy ./streamlit/secrets_example.toml
    # Rename it to secrets.toml
-   cp ./streamlit/secrets_example.toml secrets.toml
+   cp ./.streamlit/secrets_example.toml ./.streamlit/secrets.toml
    # Fill in all the values
    ```
 
