@@ -87,7 +87,7 @@ def main():
     st.title("LEWAS Lab Chatbot 💧")
     st.markdown(
         """
-    Welcome to the LEWAS Lab Chatbot! Ask questions about our water quality monitoring 
+    Welcome to the Dhruv Lab Chatbot! Ask questions about our water quality monitoring 
     and research activities, and I'll do my best to answer. You can also ask for visualizations 
     of weather data like temperature, humidity, or pressure.
     """
